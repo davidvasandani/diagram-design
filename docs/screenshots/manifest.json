@@ -469,6 +469,15 @@
       "screenshot_sha256": "3cd3fbc30a9f742ae63be793ca6f175b99438da7a762555b428a35e620d79abe",
       "width": 2400,
       "height": 1440
+    },
+    {
+      "slug": "granovetter",
+      "source": "skills/diagram-design/assets/example-granovetter.html",
+      "screenshot": "docs/screenshots/granovetter.png",
+      "source_sha256": "073dae8113ebdec1fd73c19cb6f71cd8c2e11ee2c269c5bbb73554329da16330",
+      "screenshot_sha256": "35b869126f4fa773a674213bf51cdeed9fad7f503e3c205e1c35cc8e928e934e",
+      "width": 2560,
+      "height": 1442
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: diagram-design
-description: Create branded architecture, architecture delta, IT current-state, flowchart, sequence, state machine, ER/data model, steps, timeline, swimlane, quadrant, radar/spider, polar chart (polar/radial lollipop), loop/flywheel, nested, tree, org chart, layer stack, exploded axonometric, axonometric plan, Venn, pyramid/funnel, treemap and marimekko, unit grid, heatmap, bar and dumbbell, waterfall, line (slopegraph, ridgeline, streamgraph, bump), Gantt and scatter charts (bubble, beeswarm, box plot), high-level, process, medallion, data flow, DP integration, DP security matrix, Sankey, fishbone, Wardley map, kanban, user journey, service blueprint, deployment, dependency graph (arc diagram), UML class, story map, database schema, SBGN, requirement traceability, event modeling, or schedule network diagrams as HTML/SVG/PNG, with .drawio, Mermaid, .excalidraw, and PlantUML import, plus lifecycle phase maps, block decomposition trees, and onboarding guidance.
+description: Create branded architecture, architecture delta, IT current-state, flowchart, sequence, state machine, ER/data model, steps, timeline, swimlane, quadrant, radar/spider, polar chart (polar/radial lollipop), loop/flywheel, nested, tree, org chart, layer stack, exploded axonometric, axonometric plan, Venn, pyramid/funnel, treemap and marimekko, unit grid, heatmap, bar and dumbbell, waterfall, line (slopegraph, ridgeline, streamgraph, bump), Gantt and scatter charts (bubble, beeswarm, box plot), high-level, process, medallion, data flow, DP integration, DP security matrix, Sankey, fishbone, Wardley map, kanban, user journey, service blueprint, deployment, dependency graph (arc diagram), UML class, story map, database schema, SBGN, requirement traceability, event modeling, schedule network, or Granovetter (capability/permission reach) diagrams as HTML/SVG/PNG, with .drawio, Mermaid, .excalidraw, and PlantUML import, plus lifecycle phase maps, block decomposition trees, and onboarding guidance.
 license: MIT
 metadata:
   version: "2.6"
@@ -49,7 +49,7 @@ Applied to schematics:
 
 ## 2. When to Use
 
-Use for any of the 51 visual types (§3) when a reader will learn more from a visual than from prose, a table, or a bulleted list.
+Use for any of the 52 visual types (§3) when a reader will learn more from a visual than from prose, a table, or a bulleted list.
 
 **Don't use for:**
 
@@ -80,7 +80,7 @@ When behavior, state, enforcement, or risk carries the meaning, first load [`ref
 
 The pattern owns semantic primitives and its tighter budget; the type owns layout grammar. Use [`references/animation.md`](references/animation.md) only when motion is requested or materially clarifies ordered change; static remains the default.
 
-### Visual-type guide (51)
+### Visual-type guide (52)
 
 | If you're showing… | Use | Reference |
 |---|---|---|
@@ -135,6 +135,7 @@ The pattern owns semantic primitives and its tighter budget; the type owns layou
 | Commands, resulting events, and read models across ordered stages | **Event modeling** | [type-event-modeling.md](references/type-event-modeling.md) |
 | One bounded whole counted in equal discrete units out of 100 | **Unit Grid** | [type-unit-grid.md](references/type-unit-grid.md) |
 | Task precedence, critical paths and total float from durations | **Schedule network** | [type-schedule-network.md](references/type-schedule-network.md) |
+| Who can reach what through held permissions, with controls on each path | **Granovetter** | [type-granovetter.md](references/type-granovetter.md) |
 
 Rules of thumb:
 
@@ -213,6 +214,7 @@ Universal building blocks. Type-specialized primitives (lifeline, activation bar
 - Icon set (laptop, server, DB, K8s, Docker, AWS, …) → [primitive-icons.md](references/primitive-icons.md). Browse the gallery at [`assets/icons.html`](assets/icons.html).
 - Terminal / CLI-window variant → [primitive-terminal.md](references/primitive-terminal.md)
 - Optional explanatory motion → [animation.md](references/animation.md)
+- Optional reach tracing for Granovetter diagrams → [trace.md](references/trace.md)
 
 Exact markup (background, dotted paper, markers, node box, arrow label, legend) and the long form of each connector rule: [`references/primitives-core.md`](references/primitives-core.md). The static templates (`template.html`, `template-dark.html`, `template-full.html`) already define the background and the `arrow`, `arrow-accent`, and `arrow-link` markers; `template-motion.html` defines only its own prefixed marker, so add the others from primitives-core.md when a motion diagram needs them.
 
@@ -363,7 +365,7 @@ Always produce a single self-contained `.html` file:
 
 - Embedded CSS (no external except Google Fonts)
 - Inline SVG (no external images)
-- Static by default; minimal inline JavaScript only for explicit animation controls/state
+- Static by default; minimal inline JavaScript only for explicit animation controls/state, or the pinned Granovetter trace controller ([trace.md](references/trace.md))
 
 Renders correctly in any modern browser. Motion-enabled output must render its complete meaning without JavaScript; under `prefers-reduced-motion: reduce` it shows the complete static frame and hides/disables playback controls.
 

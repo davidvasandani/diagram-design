@@ -151,6 +151,15 @@
       "thumb_sha256": "043988d1a26c19c2f78a07f91e60faeacc62daddbd34c0a78337005661444038"
     },
     {
+      "thumb": "granovetter.webp",
+      "source": "docs/screenshots/granovetter.png",
+      "source_sha256": "35b869126f4fa773a674213bf51cdeed9fad7f503e3c205e1c35cc8e928e934e",
+      "width": 600,
+      "height": 338,
+      "quality": 82,
+      "thumb_sha256": "2732a9903c3102ee3379f7ea88840b7cfca870437076c0a46e9c8f1d12dab54b"
+    },
+    {
       "thumb": "heatmap.webp",
       "source": "docs/screenshots/heatmap.png",
       "source_sha256": "fcc5ac842da8d09b8b685aa52ba6d2032465a4029a73aa094554079e1ee6817e",

@@ -70,6 +70,7 @@ These are the per-type limits. The universal rows in SKILL.md §7 (9 nodes, 12 a
 | Max activities / slices / cards (story map) | 5 / 3 / 12 |
 | Max tables / columns / FKs (db schema) | 5 / 8 shown / 6 |
 | Max macromolecules / processes / compartments / source-sink / arcs (SBGN) | 7 / 6 / 1 / 2 / 16; replaces the 9 nodes and 12 arrows rows |
+| Max principals / arrows / gates / focal gaps / introductions (Granovetter) | 8 / 12 / 6, one per arrow / 2 / 2 |
 
 If you exceed, split into two diagrams (overview + detail).
 

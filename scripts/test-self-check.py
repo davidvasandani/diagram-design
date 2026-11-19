@@ -269,6 +269,41 @@ def main() -> int:
         static.replace("</body>", "<script>alert(1)</script></body>", 1),
         "canonical data-diagram-controls attribute",
     )
+    # Granovetter trace: the second pinned controller (ADR 0020).
+    traced_path = ASSET_DIR / "example-granovetter-traced.html"
+    check_pass("shipped trace template", ASSET_DIR / "template-trace.html")
+    check_pass("shipped traced example", traced_path)
+    traced = traced_path.read_text(encoding="utf-8")
+    check_fail(
+        "tampered trace controller",
+        traced.replace("const revoked = new Set();", "const revoked = new Set(); fetch('/x');", 1),
+        "exactly match the controller in template-trace.html",
+    )
+    check_fail(
+        "trace controller under the motion attribute",
+        traced.replace("<script data-diagram-trace>", "<script data-diagram-controls>", 1),
+        "exactly match the controller in template-motion.html",
+    )
+    check_fail(
+        "motion controller under the trace attribute",
+        animated.replace("<script data-diagram-controls>", "<script data-diagram-trace>", 1),
+        "exactly match the controller in template-trace.html",
+    )
+    check_fail(
+        "trace controls visible in source",
+        traced.replace("data-trace-controls hidden>", "data-trace-controls>", 1),
+        "ships hidden",
+    )
+    check_fail(
+        "trace status not live",
+        traced.replace('aria-live="polite"', 'aria-live="off"', 1),
+        "aria-live=polite",
+    )
+    check_fail(
+        "trace plus a second script",
+        traced.replace("</body>", "<script data-diagram-controls></script></body>", 1),
+        "at most one script",
+    )
     check_fail(
         "missing svg role",
         static.replace('role="img"', 'role="presentation"', 1),

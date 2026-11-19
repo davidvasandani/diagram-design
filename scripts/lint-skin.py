@@ -23,6 +23,7 @@ STYLE_GUIDE = ROOT / "skills/diagram-design/references/style-guide.md"
 ASSET_DIR = ROOT / "skills/diagram-design/assets"
 BASELINE = ROOT / "scripts/lint-skin-baseline.txt"
 MOTION_TEMPLATE = ASSET_DIR / "template-motion.html"
+TRACE_TEMPLATE = ASSET_DIR / "template-trace.html"
 
 HEX_RE = re.compile(
     r"(?<![\w-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-fA-F])"
@@ -89,14 +90,20 @@ def normalized_controller(body):
     return body.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
-def canonical_controller_digest():
-    """Hash the one reviewed controller shipped by the motion template."""
-    source = MOTION_TEMPLATE.read_text(encoding="utf-8")
+def canonical_controller_digest(template=MOTION_TEMPLATE):
+    """Hash a reviewed controller: the motion template's, or the trace template's (ADR 0020)."""
+    source = template.read_text(encoding="utf-8")
     blocks = list(SCRIPT_BLOCK_RE.finditer(source))
     if len(blocks) != 1:
-        raise RuntimeError("template-motion.html must contain exactly one controller")
+        raise RuntimeError(f"{template.name} must contain exactly one controller")
     body = normalized_controller(blocks[0].group("body"))
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+CONTROLLER_TEMPLATES = {
+    "data-diagram-controls": MOTION_TEMPLATE,
+    "data-diagram-trace": TRACE_TEMPLATE,
+}
 
 
 def google_fonts_families(url):
@@ -618,16 +625,16 @@ def lint_text(
             "script",
             "only one canonical motion controller is allowed",
         )
-    canonical_digest = None
     for match in script_openings:
         attrs = match.group("attrs")
         block = script_blocks.get(match.start())
-        canonical_attrs = attrs.strip().casefold() == "data-diagram-controls"
-        if not canonical_attrs:
+        template = CONTROLLER_TEMPLATES.get(attrs.strip().casefold())
+        if template is None:
             add(
                 match.start(),
                 "script",
-                "only the canonical data-diagram-controls attribute is allowed",
+                "only the canonical data-diagram-controls attribute is allowed "
+                "(or data-diagram-trace for a Granovetter trace)",
             )
         elif block is None:
             add(
@@ -636,15 +643,14 @@ def lint_text(
                 "motion controller must have a closing script tag",
             )
         else:
-            if canonical_digest is None:
-                canonical_digest = canonical_controller_digest()
             body = normalized_controller(block.group("body"))
             digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
-            if digest != canonical_digest:
+            if digest != canonical_controller_digest(template):
+                kind = "motion" if template == MOTION_TEMPLATE else "trace"
                 add(
                     match.start(),
                     "script",
-                    "motion controller must exactly match template-motion.html",
+                    f"{kind} controller must exactly match {template.name}",
                 )
 
     for match in SRC_HTTP_RE.finditer(text):
