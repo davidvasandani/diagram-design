@@ -89,11 +89,14 @@
     .trace-controls button:focus-visible, .trace-controls input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
     .trace-controls label { display: inline-flex; gap: 6px; align-items: center; }
     .trace-status { min-height: 1.4em; margin-top: 8px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-ink); }
+    /* Hosts pin chat and presence widgets to the bottom corners; when the controls end the page, leave room to scroll them clear. */
+    [data-trace-root]:last-child { padding-bottom: 96px; }
 
     @media print {
       .diagram-container { overflow-x: visible; }
       svg { min-width: 0; }
       .trace-controls, .trace-status { display: none; }
+      [data-trace-root]:last-child { padding-bottom: 0; }
     }
   </style>
 </head>

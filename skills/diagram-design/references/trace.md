@@ -18,14 +18,15 @@ The controller lives in `assets/template-trace.html` and is copied **verbatim**.
 2. Bind the SVG as the type reference describes (`data-gv-node`, `data-gv-edge`, `data-gv-gate`, `data-gv-for`, `data-gv-chip`).
 3. Ship the controls **hidden** — `<div class="trace-controls" data-trace-controls hidden>` — with one `data-trace-select` button per principal, a `data-trace-intro` checkbox when any arrow is dashed, `data-trace-revoke` buttons for the arrows worth testing, and a `data-trace-reset` button. The controller unhides them.
 4. Add `<p data-trace-status role="status" aria-live="polite" aria-atomic="true">` after the controls.
-5. Copy the trace CSS block from the template: `.is-dim`, `.is-revoked`, transitions only under `prefers-reduced-motion: no-preference`, and `@media print` hiding the controls.
+5. Copy the trace CSS block from the template: `.is-dim`, `.is-revoked`, the last-child bottom clearance, transitions only under `prefers-reduced-motion: no-preference`, and `@media print` hiding the controls.
 6. One script per file. A diagram is either traced or animated, never both.
 
 ## Fallbacks
 
 - **No JavaScript:** the controls stay hidden and the diagram is the complete static frame.
 - **Reduced motion:** state changes apply without transitions.
-- **Print:** controls and status are hidden; whatever trace state is active prints as shown.
+- **Pinned host widgets:** when the trace root is the last block on the page it carries 96px of bottom padding, so the controls can scroll clear of chat or presence widgets a host pins to the bottom corners.
+- **Print:** controls and status are hidden and that padding is dropped; whatever trace state is active prints as shown.
 - **Keyboard:** every action is a native button or checkbox; principals in the SVG are pointer affordances only, because the SVG is `role="img"`.
 
 ## Anti-patterns
