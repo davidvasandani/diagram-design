@@ -110,6 +110,12 @@ GATES = [
     ("session-policy", "deploy-write", "missing", "no session policy", 898, 228, 120),
 ]
 
+# All-of principals: node id -> (start, end) angles in degrees, screen
+# coordinates (0 = right, 90 = down), swept clockwise. The arc is drawn
+# JOIN_GAP outside the rim and must span the tip of every arrow into the node.
+JOINS: dict[str, tuple[float, float]] = {}
+JOIN_GAP = 12
+
 # edge, text, x, y, w
 CHIPS = [("edit-trust", "carries Production", 612, 211, 112)]
 
@@ -193,6 +199,14 @@ def svg_body(skin: dict[str, str], slug: str) -> str:
         add(f'    <rect x="{x}" y="{y}" width="{w}" height="18" rx="9" fill="{s["chip_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>')
         add(f'    <text x="{x + w // 2}" y="{y + 12}" fill="{s["ink"]}" font-size="8" font-family="\'Geist Mono\', monospace" text-anchor="middle">{text}</text>')
         add('  </g>')
+    if JOINS:
+        add('')
+        add('  <!-- All-of joins: the arc ties together every arrow the principal needs -->')
+        for node_id, lines, sub, cx, cy, target in NODES:
+            if node_id in JOINS:
+                radius = TARGET_R if target else R
+                d = join_arc(cx, cy, radius, *JOINS[node_id])
+                add(f'  <path data-gv-join-mark="{node_id}" d="{d}" fill="none" stroke="{s["ink"]}" stroke-width="1.4"/>')
     add('')
     add('  <!-- Principals (painted last) -->')
     for node_id, lines, sub, cx, cy, target in NODES:
@@ -200,7 +214,8 @@ def svg_body(skin: dict[str, str], slug: str) -> str:
         fill = s["target_fill"] if target else s["node_fill"]
         width = "1.2" if target else "1"
         label = " ".join(lines)
-        add(f'  <g data-gv-node="{node_id}" data-gv-label="{label}">')
+        join = ' data-gv-join="all"' if node_id in JOINS else ""
+        add(f'  <g data-gv-node="{node_id}" data-gv-label="{label}"{join}>')
         add(f'    <circle cx="{cx}" cy="{cy}" r="{radius}" fill="{s["paper"]}"/>')
         add(f'    <circle cx="{cx}" cy="{cy}" r="{radius}" fill="{fill}" stroke="{s["ink"]}" stroke-width="{width}"/>')
         top = cy - 4 - 7.5 * (len(lines) - 1)
@@ -231,6 +246,9 @@ def svg_body(skin: dict[str, str], slug: str) -> str:
     if CHIPS:
         entry(x, 72, f'  <rect x="{x}" y="{ly - 9}" width="64" height="18" rx="9" fill="{s["chip_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>', "carried reference")
         x += 208
+    if JOINS:
+        entry(x, 44, f'  <path d="M {x + 4},{ly + 6} A 14,14 0 0 1 {x + 32},{ly + 6}" fill="none" stroke="{s["ink"]}" stroke-width="1.4"/>', "needs every arrow in")
+        x += 180
     if "control" in states:
         entry(x, 36, f'  <rect x="{x}" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["node_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>', "control")
         x += 112
@@ -241,6 +259,14 @@ def svg_body(skin: dict[str, str], slug: str) -> str:
         entry(x, 36, f'  <rect x="{x}" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["accent_tint"]}" stroke="{s["accent"]}" stroke-width="1.2" stroke-dasharray="4,3"/>', "focal gap")
     add('</svg>')
     return "\n".join(out)
+
+
+def join_arc(cx: float, cy: float, radius: float, start: float, end: float) -> str:
+    rr = radius + JOIN_GAP
+    span = (end - start) % 360
+    point = lambda deg: (round(cx + rr * math.cos(math.radians(deg)), 1), round(cy + rr * math.sin(math.radians(deg)), 1))
+    (x1, y1), (x2, y2) = point(start), point(end)
+    return f"M {x1:g},{y1:g} A {rr:g},{rr:g} 0 {int(span > 180)} 1 {x2:g},{y2:g}"
 
 
 def indent(block: str, spaces: int) -> str:
@@ -342,7 +368,7 @@ TRACE_CSS = """
     [data-trace-root] .is-revoked { opacity: 0.12; }
     [data-gv-node] { cursor: pointer; }
     @media (prefers-reduced-motion: no-preference) {
-      [data-gv-node], [data-gv-edge], [data-gv-gate], [data-gv-for], [data-gv-chip] { transition: opacity 160ms ease; }
+      [data-gv-node], [data-gv-edge], [data-gv-gate], [data-gv-for], [data-gv-chip], [data-gv-join-mark] { transition: opacity 160ms ease; }
     }
 
     .trace-controls {

@@ -20,8 +20,15 @@ Principals are circles. Arrows are references in three kinds: `held` (solid), `o
 
 The shipping set is `references/type-granovetter.md`, three static examples (light, dark, full editorial) generated from one scene by `scripts/build-granovetter-examples.py`, a traced variant (ADR 0020), the gallery tab and README entries, a complexity-budget row, a canonical screenshot, and the checker with adversarial tests.
 
+## Amendment: all-of joins (2026-11-23)
+
+Reach as first drawn was any-of: one usable arrow into a principal reached it. Real controls are often two-party. A pull request deploys only when its author asks *and* a different account has approved, and drawing those as two independent arrows made the trace claim the author alone reaches the deploy.
+
+A principal can now be marked `data-gv-join="all"`. It is reached only when every arrow into it is usable: not revoked, held (or dashed with one-action-away arrows included), and from a principal already reached. Statically it carries one `data-gv-join-mark` arc, drawn 8–20px outside its rim, that crosses the tip of every incoming arrow, the AND-gate convention from fault trees, so the no-JS frame shows the requirement too. The checker enforces the arc's geometry, at least two arrows in, no introduction into or carrying an all-of principal (an introduction adds its carried principal directly, which would skip the join), and a budget of two joins. The trace controller (ADR 0020) applies the rule and announces partial progress ("Deploy needs both arrows in; 1 reachable").
+
 ## Consequences
 
 - Access reviews, blast-radius questions and privilege-escalation paths get a grammar whose arrows mean what the reader thinks they mean.
 - Dependency graph stays the type for "depends on" and keeps its cycle grammar; requests about calls and data movement still route to Architecture, Data flow or Sequence.
+- Two-party controls (author plus approver, requester plus approver) are drawn as one all-of principal rather than explained in a caption.
 - Accent goes on gaps, never on principals, matching the dependency graph's rule that the accent is the problem rather than the actors.

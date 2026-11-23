@@ -11,6 +11,11 @@ checked here rather than trusted to the drawing:
   principal (``data-gv-carries``). Dashed, and it must carry a chip that
   names the carried principal, which is the Granovetter introduction.
 
+A principal marked ``data-gv-join="all"`` is reached only when every arrow
+into it is usable (an author *and* a second approver, say). It carries one
+``data-gv-join-mark`` arc, drawn just outside its rim, that crosses the tip of
+every incoming arrow, so the static frame shows the requirement too.
+
 Controls sit *on* the arrow they gate (``data-gv-gate`` + ``data-gv-on``) in one
 of three states: ``control`` (solid box), ``missing`` (dashed box) or ``gap``
 (dashed accent box, at most two, the diagram's focal elements).
@@ -46,7 +51,11 @@ KINDS = {"held", "obtain", "introduce"}
 STATES = {"control", "missing", "gap"}
 ACCENTS = {"#bf4520", "#f08a59", "var(--color-accent)"}
 ACCENT_DECL_RE = re.compile(r"--color-accent\s*:\s*(#[0-9a-fA-F]{3,8})")
-MAX_NODES, MAX_EDGES, MAX_GATES, MAX_GAPS, MAX_INTRODUCTIONS = 8, 12, 6, 2, 2
+MAX_NODES, MAX_EDGES, MAX_GATES, MAX_GAPS, MAX_INTRODUCTIONS, MAX_JOINS = 8, 12, 6, 2, 2, 2
+JOIN_GAP_RANGE = (8, 20)          # arc radius minus circle radius
+JOIN_MARGIN = math.radians(4)     # the arc runs at least this far past each arrow tip
+ARC_RE = re.compile(
+    r"\s*M\s*(-?[\d.]+)[ ,]+(-?[\d.]+)\s+A\s*(-?[\d.]+)[ ,]+(-?[\d.]+)[ ,]+0[ ,]+([01])[ ,]+([01])[ ,]+(-?[\d.]+)[ ,]+(-?[\d.]+)\s*")
 MIN_RADIUS, MAX_RADIUS = 24, 72
 RIM_TOLERANCE = 2.5
 PATH_TOKEN = re.compile(r"[MLHVQ]|[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
@@ -257,6 +266,62 @@ def check_trace(source: str, node_ids: set[str], edge_ids: set[str], has_dashed:
     return errors
 
 
+def check_joins(svg, parents, nodes, edges, joins, accents) -> list[str]:
+    errors: list[str] = []
+    if len(joins) > MAX_JOINS:
+        errors.append(f"at most {MAX_JOINS} all-of joins; found {len(joins)}")
+    marks: dict[str, ET.Element] = {}
+    for mark in (element for element in svg.iter() if "data-gv-join-mark" in element.attrib):
+        node_id = mark.get("data-gv-join-mark", "")
+        if node_id not in joins:
+            errors.append(f"join mark {node_id!r}: only a data-gv-join=\"all\" principal carries a join mark")
+            continue
+        if node_id in marks:
+            errors.append(f"join mark {node_id!r}: one join mark per principal")
+        marks[node_id] = mark
+    for node_id in sorted(joins):
+        cx, cy, r, _ = nodes[node_id]
+        incoming = {edge_id: edge for edge_id, edge in edges.items() if edge["to"] == node_id}
+        if any(edge["kind"] == "introduce" for edge in incoming.values()) or any(edge["carries"] == node_id for edge in edges.values()):
+            errors.append(f"{node_id}: an all-of principal cannot be reached by an introduction")
+        if len(incoming) < 2:
+            errors.append(f"{node_id}: an all-of principal needs at least two arrows in")
+        mark = marks.get(node_id)
+        if mark is None:
+            errors.append(f"{node_id}: an all-of principal needs a data-gv-join-mark arc")
+            continue
+        if moved(mark, parents):
+            errors.append(f"join mark {node_id!r}: join marks may not be positioned by transform")
+        if local(mark.tag) != "path" or mark.get("fill", "") != "none" or not mark.get("stroke") or mark.get("stroke-dasharray"):
+            errors.append(f"join mark {node_id!r}: a join mark is an unfilled, solid-stroked <path>")
+        if mark.get("stroke", "").lower() in accents:
+            errors.append(f"join mark {node_id!r}: the accent belongs to gaps, not join marks")
+        match = ARC_RE.fullmatch(mark.get("d", ""))
+        if not match:
+            errors.append(f"join mark {node_id!r}: the arc must be a single absolute 'M x,y A r,r 0 large sweep x,y'")
+            continue
+        x1, y1, rx, ry, large, sweep, x2, y2 = (float(value) for value in match.groups())
+        if rx != ry or not JOIN_GAP_RANGE[0] <= rx - r <= JOIN_GAP_RANGE[1]:
+            errors.append(f"join mark {node_id!r}: the arc is circular and sits {JOIN_GAP_RANGE[0]}-{JOIN_GAP_RANGE[1]}px outside the rim")
+            continue
+        if any(abs(math.dist(point, (cx, cy)) - rx) > RIM_TOLERANCE for point in ((x1, y1), (x2, y2))):
+            errors.append(f"join mark {node_id!r}: the arc must be centred on {node_id}")
+            continue
+        start = math.atan2(y1 - cy, x1 - cx)
+        end = math.atan2(y2 - cy, x2 - cx)
+        if not sweep:
+            start, end = end, start
+        span = (end - start) % math.tau
+        if bool(large) != (span > math.pi):
+            errors.append(f"join mark {node_id!r}: the large-arc flag does not match the arc's span")
+        for edge_id, edge in sorted(incoming.items()):
+            tip = edge["segments"][-1][1]
+            offset = (math.atan2(tip[1] - cy, tip[0] - cx) - start) % math.tau
+            if not JOIN_MARGIN <= offset <= span - JOIN_MARGIN:
+                errors.append(f"join mark {node_id!r}: the arc must cross the tip of {edge_id}")
+    return errors
+
+
 def check_source(source: str) -> list[str]:
     match = SVG_RE.search(source)
     if not match:
@@ -273,6 +338,7 @@ def check_source(source: str) -> list[str]:
     accents = ACCENTS | {value.lower() for value in ACCENT_DECL_RE.findall(source)}
 
     nodes: dict[str, tuple[float, float, float, str]] = {}
+    joins: set[str] = set()
     for group in (element for element in svg.iter() if "data-gv-node" in element.attrib):
         node_id = group.get("data-gv-node", "")
         label = group.get("data-gv-label", "").strip()
@@ -293,6 +359,11 @@ def check_source(source: str) -> list[str]:
         if moved(group, parents):
             errors.append(f"{node_id}: principals may not be positioned by transform")
         nodes[node_id] = (cx, cy, r, label)
+        if "data-gv-join" in group.attrib:
+            if group.get("data-gv-join") != "all":
+                errors.append(f'{node_id}: data-gv-join only takes the value "all"')
+            else:
+                joins.add(node_id)
     if not 2 <= len(nodes) <= MAX_NODES:
         errors.append(f"expected 2 to {MAX_NODES} principals; found {len(nodes)}")
 
@@ -403,6 +474,8 @@ def check_source(source: str) -> list[str]:
     for edge_id, edge in edges.items():
         if edge["kind"] == "introduce" and edge_id not in chips:
             errors.append(f"{edge_id}: an introduce arrow needs a chip naming what it carries")
+
+    errors += check_joins(svg, parents, nodes, edges, joins, accents)
 
     for label in (element for element in svg.iter() if "data-gv-for" in element.attrib):
         if label.get("data-gv-for") not in edges:

@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import importlib.util
+import math
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VERIFIER = ROOT / "scripts/verify-granovetter.py"
+BUILDER = ROOT / "scripts/build-granovetter-examples.py"
 STATIC = ROOT / "skills/diagram-design/assets/example-granovetter.html"
 TRACED = ROOT / "skills/diagram-design/assets/example-granovetter-traced.html"
 
@@ -25,6 +27,15 @@ def expect(module, source: str, old: str, new: str, needle: str, label: str) -> 
     assert old in source, f"{label}: fixture text not found: {old!r}"
     errors = module.check_source(source.replace(old, new, 1))
     assert any(needle in error for error in errors), f"{label}: expected {needle!r}, got {errors}"
+
+
+def joined_fixture() -> str:
+    spec = importlib.util.spec_from_file_location("granovetter_builder", BUILDER)
+    assert spec and spec.loader
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    builder.JOINS = {"ci": (150, 210)}
+    return builder.minimal_page("light", "granovetter-joined", traced=True)
 
 
 def main() -> None:
@@ -105,6 +116,38 @@ def main() -> None:
     rooted = static.replace("    <div>\n      <div class=\"diagram-container\">", "    <div data-trace-root>\n      <div class=\"diagram-container\">", 1)
     assert rooted != static
     assert any("exactly one script" in error for error in module.check_source(rooted)), module.check_source(rooted)
+    count += 1
+
+    # All-of joins: build a fixture from the example scene with the CI runner as an all-of principal
+    # (both contributor arrows into it), then break each join rule.
+    joined = joined_fixture()
+    assert module.check_source(joined) == [], module.check_source(joined)
+    arc = re.search(r'<path data-gv-join-mark="ci" d="([^"]+)"', joined).group(1)
+    pairs = [tuple(float(v) for v in p.split(",")) for p in re.findall(r"-?[\d.]+,-?[\d.]+", arc)]
+    (x1, y1), (x2, y2) = pairs[0], pairs[-1]
+    wide = f"M {x1:g},{y1:g} A 72,72 0 1 1 {x2:g},{y2:g}"
+    # Same circle, but it stops at 175 degrees, short of the open-pr arrow's tip (~199.5 degrees).
+    stop = (800 + 72 * math.cos(math.radians(175)), 560 + 72 * math.sin(math.radians(175)))
+    short = f"M {x1:g},{y1:g} A 72,72 0 0 1 {stop[0]:.1f},{stop[1]:.1f}"
+    join_cases = [
+        ('data-gv-join="all"', 'data-gv-join="any"', 'only takes the value "all"', "bad join value"),
+        ('<path data-gv-join-mark="ci"', '<path data-gv-dropped="ci"', "needs a data-gv-join-mark arc", "join without arc"),
+        ('<path data-gv-join-mark="ci"', '<path data-gv-join-mark="deploy"', "only a data-gv-join", "arc on a plain node"),
+        (f'd="{arc}"', f'd="M {x1:g},{y1:g} L {x2:g},{y2:g}"', "single absolute", "arc not an arc"),
+        (f'd="{arc}"', f'd="{short}"', "cross the tip of", "arc misses an arrow"),
+        (f'd="{arc}"', f'd="{wide}"', "large-arc flag", "wrong large-arc flag"),
+        (f'd="{arc}"', f'd="M {x1 - 30:g},{y1 + 10:g} A 102,102 0 0 1 {x2 - 30:g},{y2 - 10:g}"', "outside the rim", "arc too far out"),
+        (f'd="{arc}" fill="none"', f'd="{arc}" stroke-dasharray="4,3" fill="none"', "solid-stroked", "dashed arc"),
+        (f'd="{arc}" fill="none" stroke="#2d3142"', f'd="{arc}" fill="none" stroke="#bf4520"', "accent belongs to gaps", "accent arc"),
+        ('data-gv-edge="merge" data-gv-from="contributors" data-gv-to="ci"', 'data-gv-edge="merge" data-gv-from="contributors" data-gv-to="deploy"', "at least two arrows in", "join with one arrow in"),
+    ]
+    for old, new, needle, label in join_cases:
+        expect(module, joined, old, new, needle, label)
+        count += 1
+    # Production is carried by the edit-trust introduction, so it cannot be all-of.
+    carried = joined.replace('data-gv-node="prod" data-gv-label="Production"', 'data-gv-node="prod" data-gv-label="Production" data-gv-join="all"', 1)
+    assert carried != joined
+    assert any("introduction" in error for error in module.check_source(carried)), module.check_source(carried)
     count += 1
 
     print(f"OK granovetter checker: {count} adversarial cases rejected, shipped examples pass")

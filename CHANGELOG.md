@@ -10,6 +10,7 @@ Versioning note: pull requests do not edit the plugin version. After each merge 
 
 - Granovetter diagrams (type 52): principals, held and one-action-away permissions, introductions with carried-reference chips, and controls drawn on the arrows they gate, checked by `scripts/verify-granovetter.py` (ADR 0019).
 - An optional trace layer for Granovetter diagrams: hover or pick a principal to see its reach, include one-action-away arrows, and revoke arrows to see what drops out. It is a second pinned controller in `template-trace.html` (ADR 0020). When the controls end the page they keep 96px of bottom clearance, so host widgets pinned to a corner cannot cover them.
+- All-of principals for Granovetter diagrams: `data-gv-join="all"` plus an arc across the incoming arrows marks a principal that needs every arrow in (author and approver, say). The checker enforces the arc, and the trace reaches the principal only when all of them are usable (ADR 0019 amendment).
 - Mermaid import redraws `quadrantChart` blocks as Quadrant diagrams.
 - A WCAG contrast gate in CI.
 - An offline option that uses system fonts, so generated output works without loading Google Fonts.

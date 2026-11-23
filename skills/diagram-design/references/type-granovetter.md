@@ -15,9 +15,10 @@ The grammar a dependency graph lacks: **reach is transitive along held arrows**,
 | Control | `<g data-gv-gate="id" data-gv-on="edge-id" data-gv-state="control">` | `rx=2` box straddling a straight run of its arrow, solid `muted` stroke, mono text naming the control |
 | Missing control | `data-gv-state="missing"` | Same box, dashed `4,3`, `ink @ 0.02` fill. A control that belongs on this path and does not exist |
 | Focal gap | `data-gv-state="gap"` | Dashed `accent` box on `accent-tint`; its held arrow and label go `accent` too. **Max 2** |
+| All-of principal | `data-gv-join="all"` on the principal, plus one `<path data-gv-join-mark="id" d="M … A …">` | An unfilled `ink` arc 8–20px outside the rim (12 by default) crossing the tip of every arrow into it: the principal needs **all** of them, not any one. Use it for two-party controls such as author plus approver |
 | Edge label | `<g data-gv-for="edge-id">` | Masked 8px mono caps, 6–10px clear of the stroke (§6 rule 2) |
 
-Reach is the set of circles you can walk to from a principal along held arrows. Dashed arrows extend it only when the reader asks "one action away": an `obtain` arrow adds its target; an `introduce` arrow adds the carried principal to its recipient's reach, and only matters to someone who already reaches both the introducer and the recipient.
+Reach is the set of circles you can walk to from a principal along held arrows. Dashed arrows extend it only when the reader asks "one action away": an `obtain` arrow adds its target; an `introduce` arrow adds the carried principal to its recipient's reach, and only matters to someone who already reaches both the introducer and the recipient. An all-of principal is reached only when every arrow into it is usable from what is already reached; it may not receive or be carried by an introduction.
 
 ## Layout conventions
 
@@ -46,6 +47,7 @@ The static diagram must carry the whole meaning. When a reader benefits from exp
 | Max gates | 6, one per arrow |
 | Max focal gaps (accent) | 2 |
 | Max introductions | 2 |
+| Max all-of joins | 2, each with at least two arrows in |
 
 Over budget: merge principals that hold the same arrows into one circle with a count in the sublabel (`5 active · 8 eligible`), or split into an overview and a per-resource detail.
 
@@ -56,6 +58,7 @@ Over budget: merge principals that hold the same arrows into one circle with a c
 - Accent on the principals. Accent belongs to the gaps, not to the people.
 - Dashed arrows with no legend entry, or a held permission drawn dashed to look less alarming.
 - An introduction without its chip — it reads as an ordinary grant and loses the "who hands what to whom" meaning.
+- Two arrows into a principal that needs both, drawn without the join arc — the trace will claim either one reaches it.
 - Counts from a ticket or memory instead of the source system.
 - Reach shown only in the interactive layer. The static frame has to show every arrow.
 

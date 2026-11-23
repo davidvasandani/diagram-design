@@ -60,7 +60,7 @@
     [data-trace-root] [data-gv-node].is-source { stroke-width: 2; }
     [data-gv-node] { cursor: pointer; }
     @media (prefers-reduced-motion: no-preference) {
-      [data-gv-node], [data-gv-edge], [data-gv-gate], [data-gv-for], [data-gv-chip] { transition: opacity 160ms ease; }
+      [data-gv-node], [data-gv-edge], [data-gv-gate], [data-gv-for], [data-gv-chip], [data-gv-join-mark] { transition: opacity 160ms ease; }
     }
 
     .trace-controls {
@@ -162,6 +162,9 @@
           el,
           edge: el.dataset.gvOn || el.dataset.gvFor || el.dataset.gvChip,
         }));
+        const joins = new Set([...nodes].filter(([, el]) => el.dataset.gvJoin === 'all').map(([id]) => id));
+        const marks = [...root.querySelectorAll('[data-gv-join-mark]')].map((el) => ({ el, node: el.dataset.gvJoinMark }));
+        const inputs = (id) => edges.filter((edge) => edge.to === id && edge.kind !== 'introduce');
         const controls = root.querySelector('[data-trace-controls]');
         const status = root.querySelector('[data-trace-status]');
         const introToggle = root.querySelector('[data-trace-intro]');
@@ -171,6 +174,10 @@
         const revoked = new Set();
         let pinned = null;
         let preview = null;
+
+        function usable(edge, withIntro) {
+          return !revoked.has(edge.id) && (edge.kind === 'held' || withIntro);
+        }
 
         function reach(source) {
           const withIntro = Boolean(introToggle && introToggle.checked);
@@ -189,19 +196,31 @@
                 grew = true;
                 return;
               }
+              if (joins.has(edge.to)) {
+                // An all-of principal is reached only when every arrow into it is usable.
+                const needed = inputs(edge.to);
+                if (!needed.every((input) => usable(input, withIntro) && seen.has(input.from))) return;
+                needed.forEach((input) => used.add(input.id));
+              }
               used.add(edge.id);
               if (!seen.has(edge.to)) seen.add(edge.to);
               grew = true;
             });
           }
-          return { seen, used };
+          return { seen, used, withIntro };
         }
 
-        function describe(source, seen) {
+        function describe(source, seen, withIntro) {
           const reached = [...seen].filter((id) => id !== source).map(name);
           const cut = revoked.size ? ` ${revoked.size} revoked.` : '';
-          if (!reached.length) return `${name(source)} reaches nothing else.${cut}`;
-          return `${name(source)} reaches ${reached.length}: ${reached.join(', ')}.${cut}`;
+          const pending = [...joins].filter((id) => !seen.has(id)).map((id) => {
+            const needed = inputs(id);
+            const ready = needed.filter((input) => usable(input, withIntro) && seen.has(input.from)).length;
+            const count = needed.length === 2 ? 'both' : `all ${needed.length}`;
+            return ready ? ` ${name(id)} needs ${count} arrows in; ${ready} reachable.` : '';
+          }).join('');
+          if (!reached.length) return `${name(source)} reaches nothing else.${pending}${cut}`;
+          return `${name(source)} reaches ${reached.length}: ${reached.join(', ')}.${pending}${cut}`;
         }
 
         function render(announce = false) {
@@ -211,13 +230,13 @@
           bound.forEach((item) => item.el.classList.toggle('is-revoked', revoked.has(item.edge)));
           selectButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.traceSelect === pinned)));
           revokeButtons.forEach((button) => button.setAttribute('aria-pressed', String(revoked.has(button.dataset.traceRevoke))));
-          const all = [...nodes.values(), ...edges.map((edge) => edge.el), ...bound.map((item) => item.el)];
+          const all = [...nodes.values(), ...edges.map((edge) => edge.el), ...bound.map((item) => item.el), ...marks.map((mark) => mark.el)];
           if (!source) {
             all.forEach((el) => el.classList.remove('is-source', 'is-reached', 'is-dim'));
             if (announce) status.textContent = revoked.size ? `${revoked.size} revoked. Pick a principal to trace.` : 'Pick a principal to trace.';
             return;
           }
-          const { seen, used } = reach(source);
+          const { seen, used, withIntro } = reach(source);
           nodes.forEach((el, id) => {
             el.classList.toggle('is-source', id === source);
             el.classList.toggle('is-reached', seen.has(id) && id !== source);
@@ -231,7 +250,11 @@
             item.el.classList.toggle('is-reached', used.has(item.edge));
             item.el.classList.toggle('is-dim', !used.has(item.edge));
           });
-          if (announce || source === pinned) status.textContent = describe(source, seen);
+          marks.forEach((mark) => {
+            mark.el.classList.toggle('is-reached', seen.has(mark.node));
+            mark.el.classList.toggle('is-dim', !seen.has(mark.node));
+          });
+          if (announce || source === pinned) status.textContent = describe(source, seen, withIntro);
         }
 
         selectButtons.forEach((button) => button.addEventListener('click', () => {
