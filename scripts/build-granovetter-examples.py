@@ -213,20 +213,32 @@ def svg_body(skin: dict[str, str], slug: str) -> str:
     ly = LEGEND_Y
     add(f'  <line x1="40" y1="{ly - 28}" x2="1240" y2="{ly - 28}" stroke="{s["rule"]}" stroke-width="0.8"/>')
     add(f'  <text x="40" y="{ly + 3}" fill="{s["muted"]}" font-size="8" font-family="\'Geist Mono\', monospace" letter-spacing="0.14em">LEGEND</text>')
-    add(f'  <circle cx="132" cy="{ly}" r="9" fill="{s["node_fill"]}" stroke="{s["ink"]}" stroke-width="1"/>')
-    add(f'  <text x="148" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">principal</text>')
-    add(f'  <line x1="236" y1="{ly}" x2="272" y2="{ly}" stroke="{s["muted"]}" stroke-width="1.2" marker-end="url(#arrow)"/>')
-    add(f'  <text x="280" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">holds</text>')
-    add(f'  <line x1="336" y1="{ly}" x2="372" y2="{ly}" stroke="{s["muted"]}" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>')
-    add(f'  <text x="380" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">one action away</text>')
-    add(f'  <rect x="500" y="{ly - 9}" width="64" height="18" rx="9" fill="{s["chip_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>')
-    add(f'  <text x="572" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">carried reference</text>')
-    add(f'  <rect x="708" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["node_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>')
-    add(f'  <text x="744" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">control</text>')
-    add(f'  <rect x="820" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["missing_fill"]}" stroke="{s["muted"]}" stroke-width="1" stroke-dasharray="4,3"/>')
-    add(f'  <text x="856" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">missing control</text>')
-    add(f'  <rect x="976" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["accent_tint"]}" stroke="{s["accent"]}" stroke-width="1.2" stroke-dasharray="4,3"/>')
-    add(f'  <text x="1012" y="{ly + 3}" fill="{s["muted"]}" font-size="9" font-family="\'Geist Mono\', monospace">focal gap</text>')
+    # Only the elements this diagram uses get a legend entry (§9: legend covers every type used, nothing extra).
+    kinds = {kind for _e, _s, _d, kind, *_ in EDGES}
+    states = {state for _g, _e, state, *_ in GATES}
+    mono = "font-size=\"9\" font-family=\"'Geist Mono', monospace\""
+    def entry(x: int, text_dx: int, swatch: str, text: str) -> None:
+        add(swatch)
+        add(f'  <text x="{x + text_dx}" y="{ly + 3}" fill="{s["muted"]}" {mono}>{text}</text>')
+    x = 123
+    entry(x, 25, f'  <circle cx="{x + 9}" cy="{ly}" r="9" fill="{s["node_fill"]}" stroke="{s["ink"]}" stroke-width="1"/>', "principal")
+    x += 113
+    entry(x, 44, f'  <line x1="{x}" y1="{ly}" x2="{x + 36}" y2="{ly}" stroke="{s["muted"]}" stroke-width="1.2" marker-end="url(#arrow)"/>', "holds")
+    x += 100
+    if kinds & {"obtain", "introduce"}:
+        entry(x, 44, f'  <line x1="{x}" y1="{ly}" x2="{x + 36}" y2="{ly}" stroke="{s["muted"]}" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>', "one action away")
+        x += 164
+    if CHIPS:
+        entry(x, 72, f'  <rect x="{x}" y="{ly - 9}" width="64" height="18" rx="9" fill="{s["chip_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>', "carried reference")
+        x += 208
+    if "control" in states:
+        entry(x, 36, f'  <rect x="{x}" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["node_fill"]}" stroke="{s["muted"]}" stroke-width="1"/>', "control")
+        x += 112
+    if "missing" in states:
+        entry(x, 36, f'  <rect x="{x}" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["missing_fill"]}" stroke="{s["muted"]}" stroke-width="1" stroke-dasharray="4,3"/>', "missing control")
+        x += 156
+    if "gap" in states:
+        entry(x, 36, f'  <rect x="{x}" y="{ly - 8}" width="28" height="16" rx="2" fill="{s["accent_tint"]}" stroke="{s["accent"]}" stroke-width="1.2" stroke-dasharray="4,3"/>', "focal gap")
     add('</svg>')
     return "\n".join(out)
 
@@ -375,9 +387,10 @@ def trace_controls() -> str:
              '          <legend>Trace reach from</legend>']
     for node_id, *_ in NODES:
         lines.append(f'          <button type="button" data-trace-select="{node_id}" aria-pressed="false">{names[node_id]}</button>')
-    lines += ['        </fieldset>',
-              '        <label><input type="checkbox" data-trace-intro> Include one-action-away arrows</label>',
-              '        <fieldset>',
+    lines.append('        </fieldset>')
+    if any(kind != "held" for _e, _s, _d, kind, *_ in EDGES):
+        lines.append('        <label><input type="checkbox" data-trace-intro> Include one-action-away arrows</label>')
+    lines += ['        <fieldset>',
               '          <legend>Revoke</legend>']
     for edge_id, src, dst, _kind, _d, label, *_ in EDGES:
         text = REVOKE_LABELS.get(edge_id) or f"{names[src]} → {names[dst]}"
