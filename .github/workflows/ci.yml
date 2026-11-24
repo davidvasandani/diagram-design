@@ -625,6 +625,34 @@ jobs:
           esac
           echo "$out" | grep -q "All export-wait cases passed"
 
+      # Granovetter trace behaviour and label fit need a running page: the
+      # controller is swept against an independent reach model and labels are
+      # measured with the webfonts loaded. Self-test first, so a gate that
+      # cannot fail cannot pass.
+      - name: Verify Granovetter browser checks fire
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        id: granovetter_browser_selftest
+        shell: bash
+        run: |
+          out="$(uv run --locked --project .github/ci/python python scripts/test-granovetter-browser.py --self-test)"
+          echo "$out"
+          case "$out" in
+            SKIP:*) echo "::error::Granovetter browser self-test skipped despite Playwright being installed" && exit 1 ;;
+          esac
+          echo "$out" | grep -q "All Granovetter self-test cases caught"
+
+      - name: Run Granovetter browser checks
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        id: granovetter_browser
+        shell: bash
+        run: |
+          out="$(uv run --locked --project .github/ci/python python scripts/test-granovetter-browser.py)"
+          echo "$out"
+          case "$out" in
+            SKIP:*) echo "::error::Granovetter browser checks skipped despite Playwright being installed" && exit 1 ;;
+          esac
+          echo "$out" | grep -q "All Granovetter browser checks passed"
+
       # The checks before the sweep: a broken linter must not be able to report
       # a clean repository.
       - name: Verify render linter checks
@@ -717,6 +745,8 @@ jobs:
           echo "| Schedule Network Checker | ${{ steps.schedule_network_tests.outcome == 'success' && '✅ Passed' || (steps.schedule_network_tests.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Granovetter Reach, Gates & Trace | ${{ steps.granovetter.outcome == 'success' && '✅ Passed' || (steps.granovetter.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Granovetter Checker | ${{ steps.granovetter_tests.outcome == 'success' && '✅ Passed' || (steps.granovetter_tests.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Granovetter Browser Self-test | ${{ steps.granovetter_browser_selftest.outcome == 'success' && '✅ Passed' || (steps.granovetter_browser_selftest.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Granovetter Trace & Label Fit | ${{ steps.granovetter_browser.outcome == 'success' && '✅ Passed' || (steps.granovetter_browser.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Ridgeline Shared Amplitude | ${{ steps.ridgeline.outcome == 'success' && '✅ Passed' || (steps.ridgeline.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Ridgeline Checker | ${{ steps.ridgeline_tests.outcome == 'success' && '✅ Passed' || (steps.ridgeline_tests.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Bubble Position & Area | ${{ steps.bubble.outcome == 'success' && '✅ Passed' || (steps.bubble.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> "$GITHUB_STEP_SUMMARY"

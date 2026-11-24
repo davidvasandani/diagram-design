@@ -52,6 +52,10 @@ def main() -> None:
         ('<circle cx="280" cy="360" r="60" fill="#ffffff"', '<circle cx="280" cy="360" r="90" fill="#ffffff"', "radius", "radius"),
         ('data-gv-label="Deploy role"', 'data-gv-label="Release role"', "data-gv-label", "label mismatch"),
         ('<g data-gv-node="ci"', '<g transform="translate(4,0)" data-gv-node="ci"', "transform", "moved node"),
+        # Labels must fit inside their circle (circles are r=60 here)
+        ('text-anchor="middle">self-hosted</text>', 'text-anchor="middle">self-hosted on every laptop</text>', "runs past the circle", "long sublabel"),
+        ('text-anchor="middle">Contributors</text>', 'text-anchor="middle">Contributors and maintainers</text>', "runs past the circle", "long name"),
+        ('text-anchor="middle">self-hosted</text>', 'text-anchor="start">self-hosted</text>', "runs past the circle", "label anchored off centre"),
         # Edges
         ('data-gv-edge="merge" data-gv-from="contributors"', 'data-gv-edge="merge" data-gv-from="nobody"', "two different principals", "unknown source"),
         ('data-gv-edge="assume" data-gv-from="breakglass" data-gv-to="deploy" data-gv-kind="obtain"',

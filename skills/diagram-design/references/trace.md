@@ -13,7 +13,7 @@ Routed from [type-granovetter.md](type-granovetter.md). Optional. A diagram is s
 
 ## Contract
 
-The controller lives in `assets/template-trace.html` and is copied **verbatim**. `lint-skin.py`, `self_check.py` and `verify-granovetter.py` all compare it to the template; a hand-edited controller fails every gate. Per diagram you write only markup and CSS:
+The controller lives in `assets/template-trace.html` and is copied **verbatim**. `lint-skin.py`, `self_check.py` and `verify-granovetter.py` all compare it to the template; a hand-edited controller fails every gate. `scripts/test-granovetter-browser.py` runs the controller itself: for every principal, with intro off and on and each arrow revoked in turn, the reach it marks must match an independent model of the rules, and the buttons, Reset and Escape must drive the same state. Per diagram you write only markup and CSS:
 
 1. Wrap the diagram container and controls in one `<div data-trace-root>`.
 2. Bind the SVG as the type reference describes (`data-gv-node`, `data-gv-edge`, `data-gv-gate`, `data-gv-for`, `data-gv-chip`, and `data-gv-join` / `data-gv-join-mark` for all-of principals).

@@ -22,7 +22,9 @@ of three states: ``control`` (solid box), ``missing`` (dashed box) or ``gap``
 
 The checker reads the raw SVG: every arrow must start on its source circle's
 rim and end on its target's, every gate and chip must sit on a straight run of
-its own arrow, and nothing may be moved by a transform.
+its own arrow, every name and sublabel must fit inside its circle (estimated
+from font metrics; scripts/test-granovetter-browser.py measures it), and nothing may be moved by
+a transform.
 
 When the page carries the trace layer, its single ``<script data-diagram-trace>``
 must byte-match the reviewed controller in ``assets/template-trace.html``
@@ -39,6 +41,7 @@ import argparse
 import math
 import re
 import sys
+import unicodedata
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from pathlib import Path
@@ -58,6 +61,13 @@ ARC_RE = re.compile(
     r"\s*M\s*(-?[\d.]+)[ ,]+(-?[\d.]+)\s+A\s*(-?[\d.]+)[ ,]+(-?[\d.]+)[ ,]+0[ ,]+([01])[ ,]+([01])[ ,]+(-?[\d.]+)[ ,]+(-?[\d.]+)\s*")
 MIN_RADIUS, MAX_RADIUS = 24, 72
 RIM_TOLERANCE = 2.5
+# Label extent inside a circle is estimated, as verify-marimekko.py does: Latin
+# advances calibrated against Chromium's Geist / Geist Mono and rounded up,
+# wide glyphs a full em, so overflow is reported slightly early, never late.
+# The estimate runs wide for Geist 600 (about 16%), so it is held to the rim
+# itself; test-granovetter-browser.py measures the real box against an inset.
+MONO_ADVANCE, SANS_ADVANCE, WIDE_ADVANCE = 0.62, 0.60, 1.00
+ASCENT, DESCENT = 0.74, 0.20
 PATH_TOKEN = re.compile(r"[MLHVQ]|[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
 PATH_SEPARATORS = re.compile(r"[ \t\n\r\f,]*")
 ARGS = {"M": 2, "L": 2, "H": 1, "V": 1, "Q": 4}
@@ -149,6 +159,32 @@ def box(rect: ET.Element) -> tuple[float, float, float, float]:
 
 def text_of(element: ET.Element) -> str:
     return " ".join(" ".join(part.strip() for part in element.itertext()).split())
+
+
+def estimated_advance(text: str, mono: bool) -> float:
+    narrow = MONO_ADVANCE if mono else SANS_ADVANCE
+    return sum(
+        WIDE_ADVANCE if unicodedata.east_asian_width(char) in {"W", "F"} else narrow
+        for char in text
+        if unicodedata.category(char) not in {"Mn", "Me"}
+    )
+
+
+def overflowing(group: ET.Element, cx: float, cy: float, r: float) -> list[str]:
+    """Texts in a principal whose estimated box reaches past the rim."""
+    found = []
+    for text in (element for element in group.iter() if local(element.tag) == "text"):
+        body = " ".join("".join(text.itertext()).split())
+        x, y, size = number(text.get("x")), number(text.get("y")), number(text.get("font-size", "12"))
+        if not body or any(math.isnan(value) for value in (x, y, size)):
+            continue
+        width = size * estimated_advance(body, "mono" in text.get("font-family", "").lower())
+        anchor = text.get("text-anchor", "start")
+        left = x - width / 2 if anchor == "middle" else x - width if anchor == "end" else x
+        corners = [(px, py) for px in (left, left + width) for py in (y - size * ASCENT, y + size * DESCENT)]
+        if any(math.dist(corner, (cx, cy)) > r for corner in corners):
+            found.append(body)
+    return found
 
 
 def moved(element: ET.Element, parents: dict[ET.Element, ET.Element]) -> bool:
@@ -356,6 +392,8 @@ def check_source(source: str) -> list[str]:
         words = text_of(group)
         if not label or any(word not in words for word in label.split()):
             errors.append(f"{node_id}: data-gv-label must match the name drawn in the circle")
+        for body in overflowing(group, cx, cy, r):
+            errors.append(f"{node_id}: {body!r} runs past the circle; shorten it or widen r (max {MAX_RADIUS})")
         if moved(group, parents):
             errors.append(f"{node_id}: principals may not be positioned by transform")
         nodes[node_id] = (cx, cy, r, label)

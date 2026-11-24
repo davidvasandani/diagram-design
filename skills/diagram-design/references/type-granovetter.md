@@ -32,7 +32,7 @@ Reach is the set of circles you can walk to from a principal along held arrows. 
 
 ## Honest-data rule
 
-Every count and state is read from the source system, not inferred: role holders and eligibility from the directory, branch protection and CODEOWNERS from the repository, policy from the policy engine. When a gap is inferred from configuration rather than tested, the caption says so. `scripts/verify-granovetter.py` gates the markup: rim endpoints, solid vs dashed by kind, carried chips that name a real principal, gates that straddle their own arrow, the 2-gap focal budget, and no transforms on bound elements.
+Every count and state is read from the source system, not inferred: role holders and eligibility from the directory, branch protection and CODEOWNERS from the repository, policy from the policy engine. When a gap is inferred from configuration rather than tested, the caption says so. `scripts/verify-granovetter.py` gates the markup: rim endpoints, solid vs dashed by kind, carried chips that name a real principal, gates that straddle their own arrow, the 2-gap focal budget, names and sublabels that fit inside their circle, and no transforms on bound elements. The label fit there is a conservative estimate; `scripts/test-granovetter-browser.py` measures the rendered boxes in Chromium and holds them 2px inside the rim.
 
 ## Interactive trace (optional)
 
